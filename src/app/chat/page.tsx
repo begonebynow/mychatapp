@@ -9,7 +9,9 @@ interface ChatMessage {
   message: string;
 }
 
-const socket = io("https://mychatapp-backend-yrvv.onrender.com");
+const socket = io("https://mychatapp-backend-yrvv.onrender.com",{
+  transports: ["websocket"],
+});
 
 export default function Chat() {
   const router = useRouter();
