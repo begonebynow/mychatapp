@@ -9,7 +9,7 @@ interface ChatMessage {
   message: string;
 }
 
-const socket = io("ws://ChitChat.local:3001");
+const socket = io("https://mychatapp-backend-yrvv.onrender.com");
 
 export default function Chat() {
   const router = useRouter();
