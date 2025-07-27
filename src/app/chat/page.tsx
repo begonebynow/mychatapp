@@ -1,22 +1,23 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { io, Socket } from "socket.io-client";
+import { io } from "socket.io-client";
 import { useRouter } from "next/navigation";
 
 interface ChatMessage {
   user: string;
   message: string;
+  timestamp: string;
 }
 
-const socket = io("https://mychatapp-backend-yrvv.onrender.com",{
+const BACKEND_URL = "https://mychatapp-backend-yrvv.onrender.com";
+const socket = io(BACKEND_URL, {
   transports: ["websocket"],
 });
 
 export default function Chat() {
   const router = useRouter();
 
-  const [socket, setSocket] = useState<Socket | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputMessage, setInputMessage] = useState("");
   const [recipient, setRecipient] = useState("");
@@ -34,37 +35,22 @@ export default function Chat() {
       return;
     }
 
-    const newSocket = io("ws://localhost:3001", {
-      transports: ["websocket"],
+    socket.emit("join", currentUser);
+
+    socket.on("private_message", (data: ChatMessage) => {
+      setMessages((prev) => [...prev, data]);
     });
 
-    newSocket.on("connect", () => {
-      console.log("Connected to WebSocket server");
-      newSocket.emit("join", currentUser);
-    });
-
-    newSocket.on("private_message", (data: ChatMessage) => {
-      if (data.user !== currentUser) {
-        setMessages((prev) => [...prev, data]);
-      }
-    });
-
-    newSocket.on("update-online-users", (users: string[]) => {
+    socket.on("update-online-users", (users: string[]) => {
       setOnlineUsers(users);
     });
 
-    newSocket.on("registered-users", (users: string[]) => {
+    socket.on("registered-users", (users: string[]) => {
       setRegisteredUsers(users);
     });
 
-    newSocket.on("disconnect", () => {
-      console.log("Disconnected from WebSocket");
-    });
-
-    setSocket(newSocket);
-
     return () => {
-      newSocket.disconnect();
+      socket.disconnect();
     };
   }, [currentUser, router]);
 
@@ -74,11 +60,12 @@ export default function Chat() {
     const newMessage: ChatMessage = {
       user: currentUser,
       message: inputMessage,
+      timestamp: new Date().toLocaleTimeString(),
     };
 
     setMessages((prev) => [...prev, newMessage]);
 
-    socket?.emit("private_message", {
+    socket.emit("private_message", {
       to: recipient,
       from: currentUser,
       message: inputMessage,
@@ -93,37 +80,43 @@ export default function Chat() {
   };
 
   return (
-    <main className="flex h-screen">
+    <main className="flex h-screen bg-gray-100">
       {/* Sidebar */}
-      <aside className="w-1/4 bg-gray-800 text-white p-4 overflow-y-auto">
-        <h2 className="text-xl font-bold mb-4">Users</h2>
+      <aside className="w-1/4 bg-gray-900 text-white p-4 overflow-y-auto">
+        {/* Top Row: Users + Logout */}
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-2xl font-bold">Users</h2>
+          <button
+            className="bg-red-700 text-white text-sm px-3 py-1 rounded"
+            onClick={handleLogout}
+          >
+            Logout
+          </button>
+        </div>
 
-        {/* Chat With Input */}
         <div className="mb-6">
-          <label className="block text-sm font-semibold mb-1">
-            Chat with (username):
-          </label>
+          <label className="block text-sm font-semibold mb-1">Chat with:</label>
           <input
             type="text"
             value={recipient}
             onChange={(e) => setRecipient(e.target.value)}
             className="w-full p-2 border rounded text-black"
-            placeholder="Enter recipient username"
+            placeholder="Enter username"
           />
         </div>
 
-        {/* User List */}
         {registeredUsers.map((user, index) => (
           <div
             key={index}
-            className="flex items-center justify-between bg-gray-700 p-2 rounded mb-2"
+            className={`flex items-center justify-between p-2 rounded mb-2 ${
+              recipient === user ? "bg-blue-600" : "bg-gray-700"
+            } cursor-pointer`}
+            onClick={() => setRecipient(user)}
           >
             <span>{user}</span>
             <span
               className={`h-3 w-3 rounded-full ${
-                onlineUsers.includes(user)
-                  ? "bg-green-400"
-                  : "bg-gray-500"
+                onlineUsers.includes(user) ? "bg-green-400" : "bg-gray-500"
               }`}
             ></span>
           </div>
@@ -131,41 +124,45 @@ export default function Chat() {
       </aside>
 
       {/* Main Chat Section */}
-      <div className="flex-1 max-w-2xl mx-auto mt-10 p-4">
+      <div className="flex-1 flex flex-col max-w-2xl mx-auto py-10 px-6">
         <div className="flex justify-between items-center mb-4">
-          <h1 className="text-2xl font-bold">MyChatApp</h1>
-          <button
-            className="bg-red-500 text-white px-4 py-2 rounded"
-            onClick={handleLogout}
-          >
-            Logout
-          </button>
+          <h1 className="text-3xl font-bold">ChitChat</h1>
         </div>
 
-        <div className="border p-4 mb-4 h-64 overflow-y-auto">
+        <div className="flex-1 border rounded p-4 mb-4 bg-white overflow-y-auto">
           {messages.map((msg, index) => (
-            <p key={index}>
-              <strong>{msg.user === currentUser ? "You" : msg.user}:</strong>{" "}
-              {msg.message}
-            </p>
+            <div
+              key={index}
+              className={`mb-2 ${
+                msg.user === currentUser ? "text-right" : "text-left"
+              }`}
+            >
+              <p className="text-sm text-gray-500">
+                {msg.user === currentUser ? "You" : msg.user} @ {msg.timestamp}
+              </p>
+              <p className="bg-gray-200 inline-block rounded px-3 py-1 mt-1">
+                {msg.message}
+              </p>
+            </div>
           ))}
         </div>
 
-        <input
-          type="text"
-          value={inputMessage}
-          onChange={(e) => setInputMessage(e.target.value)}
-          placeholder="Type a message"
-          className="w-full p-2 border rounded"
-          onKeyDown={(e) => e.key === "Enter" && handleSendMessage()}
-        />
-
-        <button
-          className="mt-2 bg-blue-500 text-white p-2 rounded"
-          onClick={handleSendMessage}
-        >
-          Send
-        </button>
+        <div className="flex">
+          <input
+            type="text"
+            value={inputMessage}
+            onChange={(e) => setInputMessage(e.target.value)}
+            placeholder="Type a message..."
+            className="flex-1 p-2 border rounded-l"
+            onKeyDown={(e) => e.key === "Enter" && handleSendMessage()}
+          />
+          <button
+            className="bg-blue-500 text-white px-4 py-2 rounded-r"
+            onClick={handleSendMessage}
+          >
+            Send
+          </button>
+        </div>
       </div>
     </main>
   );
