@@ -85,7 +85,11 @@ export default function Chat() {
       <aside className="w-1/4 bg-gray-900 text-white p-4 overflow-y-auto">
         {/* Top Row: Users + Logout */}
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-2xl font-bold">Users</h2>
+          <div className="mb-2">
+            <h2 className="text-xl font-bold">Users</h2>
+            <p className="text-sm text-gray-300 mt-1">You: <span className="font-semibold">{currentUser}</span></p>
+          </div>
+
           <button
             className="bg-red-700 text-white text-sm px-3 py-1 rounded"
             onClick={handleLogout}
@@ -94,8 +98,14 @@ export default function Chat() {
           </button>
         </div>
 
-        <div className="mb-6">
-          <label className="block text-sm font-semibold mb-1">Chat with:</label>
+        <div className="flex flex-col justify-between items-start mb-4">
+          <h1 className="text-3xl font-bold mb-1">ChitChat</h1>
+          {recipient && (
+            <p className="text-lg text-gray-700">
+              Chatting with: <span className="font-semibold text-blue-600">{recipient}</span>
+               </p>
+               )}
+            </div>
           <input
             type="text"
             value={recipient}
