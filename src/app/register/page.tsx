@@ -1,7 +1,6 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 
 export default function Register() {
     const [username, setUsername] = useState("");
@@ -28,7 +27,7 @@ export default function Register() {
         const storedUsers = localStorage.getItem("chatUsers");
         const users = storedUsers ? JSON.parse(storedUsers) : [];
 
-        const userExists = users.find((u: any) => u.username === username);
+        const userExists = users.find((u: { username: string }) => u.username === username);
         if (userExists) {
             setError("User already exists. Please login.");
             return;
